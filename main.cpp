@@ -1,15 +1,4 @@
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <unistd.h>
-#include <signal.h>
-#include <stdexcept>
-#include <memory>
-#include <sys/wait.h>
-#include <cstring>
+#include "include/common.h"
 
 std::ofstream logFile;
 
