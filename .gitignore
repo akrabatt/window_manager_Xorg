@@ -1,2 +1,4 @@
 .vscode/
 simple_wm
+build/*
+!build/.gitkeep

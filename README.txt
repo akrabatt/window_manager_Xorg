@@ -1,2 +1,2 @@
 Hi there !
-This is my own simply window manager for linux, like DWM or i3
+This is my own simpl window manager for linux, like DWM or i3
