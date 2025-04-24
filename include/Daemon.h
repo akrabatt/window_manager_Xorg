@@ -6,5 +6,4 @@ class Daemon
 {
 public:
     Daemon();
-    ~Daemon();
 };

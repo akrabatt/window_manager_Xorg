@@ -1,3 +1,4 @@
+#include "../include/common.h"
 #include "../include/Daemon.h"
 
 Daemon::Daemon() {
