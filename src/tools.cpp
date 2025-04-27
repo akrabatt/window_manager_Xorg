@@ -67,3 +67,21 @@ void handleWindowEvent(Display* display, Window window)
 
     logMessage("Window event handled");
 }
+
+void scanExistingWindows(Display* dpy, Window root)
+{
+    Window parent, *kids;
+    unsigned int nkids;
+
+    if(!XQueryTree(dpy, root, &root, &parent, &kids, &nkids)) { return; } 
+
+    for(unsigned i = 0; i < nkids; i++)
+    {
+        XWindowAttributes wa;
+        if(XGetWindowAttributes(dpy, kids[i], &wa) && wa.map_state == IsViewable && !wa.override_redirect)
+        {
+            handleWindowEvent(dpy, kids[i]);
+        }
+    }
+    XFree(kids);
+}

@@ -23,7 +23,7 @@ int main() {
         Display* display = xConnection.get();
 
         Window root = DefaultRootWindow(display);
-        XSelectInput(display, root, SubstructureNotifyMask | KeyPressMask);
+        XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
         XGrabKeyboard(display, root, True, GrabModeAsync, GrabModeAsync, CurrentTime);
 
         logMessage("Subscription to key and window events successfully completed");
@@ -32,8 +32,9 @@ int main() {
             XEvent event;
             XNextEvent(display, &event);
 
-            if (event.type == MapNotify) {
-                handleWindowEvent(display, event.xmap.window);
+            if (event.type == MapRequest) {
+                Window w = event.xmaprequest.window;
+                handleWindowEvent(display, w);
             } else if (event.type == KeyPress) {
                 KeySym key = XLookupKeysym(&event.xkey, 0);
                 logMessage("Key pressed: " + std::to_string(key) + " (" + XKeysymToString(key) + ")");
