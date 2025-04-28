@@ -21,10 +21,14 @@ int main() {
 
         XServerConnection xConnection;
         Display* display = xConnection.get();
-
         Window root = DefaultRootWindow(display);
-        XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
+
+        XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | ButtonPressMask);
         XGrabKeyboard(display, root, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+
+        logMessage("Subscribed to root events");
+
+        scanExistingWindows(display, root);
 
         logMessage("Subscription to key and window events successfully completed");
 

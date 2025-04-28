@@ -36,14 +36,15 @@ void launchApplication(const char* appCommand)
         execl("/bin/sh", "sh", "-c", appCommand, (char*)nullptr);
         logMessage("Error to execute execl: " + std::string(strerror(errno)));
         exit(EXIT_FAILURE);
-    } else {
-        int status;
-        waitpid(pid, &status, 0);
-        if(WIFEXITED(status))
-        {
-            logMessage("Application complited with code: " + std::to_string(WEXITSTATUS(status)));
-        }
-    }
+    } 
+    // else {
+    //     int status;
+    //     waitpid(pid, &status, 0);
+    //     if(WIFEXITED(status))
+    //     {
+    //         logMessage("Application complited with code: " + std::to_string(WEXITSTATUS(status)));
+    //     }
+    // }
 }
 
 void handleWindowEvent(Display* display, Window window)
@@ -61,7 +62,7 @@ void handleWindowEvent(Display* display, Window window)
     newAttrs.background_pixel = BlackPixel(display, DefaultScreen(display));
 
     XChangeWindowAttributes(display, window, CWBorderPixel | CWBackPixel, &newAttrs);
-    XSetWindowBorder(display, window, 5);\
+    XSetWindowBorderWidth(display, window, 5);
     XMapWindow(display, window);
     XSetInputFocus(display, window, RevertToPointerRoot, CurrentTime);
 
