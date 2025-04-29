@@ -51,23 +51,63 @@ void handleWindowEvent(Display* display, Window window)
 {
     XWindowAttributes attrs;
     XGetWindowAttributes(display, window, &attrs);
-    if(attrs.map_state != IsViewable)
+    if (attrs.override_redirect)
     {
-        logMessage("Window isn't viewable, ignoring");
         return;
     }
 
-    XSetWindowAttributes newAttrs;
-    newAttrs.border_pixel = WhitePixel(display, DefaultScreen(display));
-    newAttrs.background_pixel = BlackPixel(display, DefaultScreen(display));
+    // create red color
+    Colormap colormap = DefaultColormap(display, DefaultScreen(display));
+    XColor redColor, exactColor;
+    if (!XAllocNamedColor(display, colormap, "red", &redColor, &exactColor))
+    {
+        logMessage("Failed to allocate red color, fallback to black");
+        redColor.pixel = BlackPixel(display, DefaultScreen(display));
+    }
 
-    XChangeWindowAttributes(display, window, CWBorderPixel | CWBackPixel, &newAttrs);
-    XSetWindowBorderWidth(display, window, 5);
+    int border_width = 4;
+    int frame_x = 100;
+    int frame_y = 100;
+    unsigned int client_width = attrs.width;
+    unsigned int client_height = attrs.height;
+
+    if (client_width < 100) client_width = 600;
+    if (client_height < 100) client_height = 400;
+
+    int frame_width = client_width + border_width * 2;
+    int frame_height = client_height + border_width * 2;
+
+    // create window-frame
+    Window frame = XCreateSimpleWindow(
+        display,
+        DefaultRootWindow(display),
+        frame_x, frame_y,
+        frame_width, frame_height,
+        border_width,
+        redColor.pixel,
+        WhitePixel(display, DefaultScreen(display))
+    );
+
+    XSelectInput(display, frame,
+        SubstructureRedirectMask |
+        SubstructureNotifyMask |
+        ButtonPressMask |
+        ButtonReleaseMask |
+        PointerMotionMask
+    );
+    
+
+    // reparent the client window to the frame
+    XReparentWindow(display, window, frame, border_width, border_width);
+
+    XMapWindow(display, frame);
     XMapWindow(display, window);
+
     XSetInputFocus(display, window, RevertToPointerRoot, CurrentTime);
 
-    logMessage("Window event handled");
+    logMessage("Framed and mapped window");
 }
+
 
 void scanExistingWindows(Display* dpy, Window root)
 {

@@ -4,59 +4,132 @@
 #include "include/tools.h"
 
 
+Window moving_window = 0;
+int start_root_x = 0, start_root_y = 0;
+int win_start_x = 0, win_start_y = 0;
+
 int main() {
     try {
         const char* displayEnv = getenv("DISPLAY");
-        if (!displayEnv || std::string(displayEnv).empty()) {
+        if (!displayEnv || std::string(displayEnv).empty())
             throw std::runtime_error("variable DISPLAY is not set");
-        }
-        logMessage("DISPLAY: " + std::string(displayEnv));
-
-        Daemon daemon;
+        // Daemon daemon;
 
         initLogging();
+        logMessage(std::string("DISPLAY: ") + displayEnv);
         logMessage("Starting window manager...");
 
-        setenv("DISPLAY", displayEnv, 1);
-
-        XServerConnection xConnection;
-        Display* display = xConnection.get();
+        XServerConnection xconn;
+        Display* display = xconn.get();
         Window root = DefaultRootWindow(display);
 
-        XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | ButtonPressMask);
+        // subscribe to events on root window
+        XSelectInput(display, root,
+            SubstructureRedirectMask |
+            SubstructureNotifyMask   |
+            KeyPressMask            |
+            ButtonPressMask);
         XGrabKeyboard(display, root, True, GrabModeAsync, GrabModeAsync, CurrentTime);
 
         logMessage("Subscribed to root events");
 
+        // capture existing windows
         scanExistingWindows(display, root);
 
-        logMessage("Subscription to key and window events successfully completed");
+        // autostart applications
+        const char* autostart[] = {
+            // "xclock", 
+            "xterm", 
+            nullptr
+        };
+        for (const char** cmd = autostart; *cmd; ++cmd) {
+            launchApplication(*cmd);
+        }
 
+        logMessage("Autostart applications launched");
+
+        
         while (true) {
-            XEvent event;
-            XNextEvent(display, &event);
-
-            if (event.type == MapRequest) {
-                Window w = event.xmaprequest.window;
+            XEvent ev;
+            XNextEvent(display, &ev);
+            switch (ev.type) {
+            case MapRequest: {
+                Window w = ev.xmaprequest.window;
                 handleWindowEvent(display, w);
-            } else if (event.type == KeyPress) {
-                KeySym key = XLookupKeysym(&event.xkey, 0);
-                logMessage("Key pressed: " + std::to_string(key) + " (" + XKeysymToString(key) + ")");
+                break;
+            }
+            case KeyPress: {
+                KeySym key = XLookupKeysym(&ev.xkey, 0);
+                logMessage(std::string("Key pressed: ") + XKeysymToString(key));
                 if (key == XK_F1) {
                     launchApplication("xterm");
                 } else if (key == XK_F2) {
                     launchApplication("gedit");
-                } else {
-                    logMessage("Key isn't supported: " + std::string(XKeysymToString(key)));
                 }
-            } else {
-                logMessage("Error: " + std::to_string(event.type));
+                break;
+            }
+            case ButtonPress: {
+                XButtonEvent* be = &ev.xbutton;
+                XWindowAttributes attr;
+                XGetWindowAttributes(display, be->window, &attr);
+            
+                moving_window = be->window;
+            
+                start_root_x = be->x_root;
+                start_root_y = be->y_root;
+            
+                win_start_x = attr.x;
+                win_start_y = attr.y;
+            
+                logMessage("Started moving window");
+                break;
+            }
+            
+            case MotionNotify: {
+                if (moving_window != 0) {
+                    XMotionEvent* me = &ev.xmotion;
+            
+                    int dx = me->x_root - start_root_x;
+                    int dy = me->y_root - start_root_y;
+            
+                    XMoveWindow(display, moving_window,
+                        win_start_x + dx,
+                        win_start_y + dy);
+            
+                    logMessage("Moving window");
+                }
+                break;
+            }
+            
+            case ButtonRelease: {
+                moving_window = 0;
+                logMessage("Stopped moving window");
+                break;
+            }
+                       
+            case ConfigureRequest: {
+                XConfigureRequestEvent* cre = &ev.xconfigurerequest;
+
+                XWindowChanges changes;
+                changes.x = cre->x;
+                changes.y = cre->y;
+                changes.width = cre->width;
+                changes.height = cre->height;
+                changes.border_width = cre->border_width;
+                changes.sibling = cre->above;
+                changes.stack_mode = cre->detail;
+
+                XConfigureWindow(display, cre->window, cre->value_mask, &changes);
+                logMessage("Handled ConfigureRequest event");
+                break;
+            }
+            default:
+                break;
             }
         }
     } catch (const std::exception& e) {
-        logMessage("Error: " + std::string(e.what()));
+        logMessage(std::string("Error: ") + e.what());
         return EXIT_FAILURE;
     }
-
     return EXIT_SUCCESS;
 }
